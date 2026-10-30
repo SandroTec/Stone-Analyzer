@@ -1,59 +1,69 @@
-# StoneAnalyzer
+# Stone / Field — Stone Analyzer MVP v0.1
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.19.
+Eine responsive Angular-SPA für die digitale Dokumentation von Gesteins- und Mineralfunden. Die Identifikation in v0.1 ist ausdrücklich eine Demo: Das hochgeladene Foto wird nicht ausgewertet und es findet keine KI-Erkennung statt.
 
-## Development server
+## Tech Stack
 
-To start a local development server, run:
+- Angular 21 mit Standalone Components, Angular Router und moderner Template-Syntax
+- TypeScript, SCSS, Signals und Reactive Forms
+- Versionierte LocalStorage-Persistenz hinter einem asynchronen Repository-Interface
+- Vitest über den Angular Unit-Test-Builder
 
-```bash
-ng serve
+## MVP-Funktionen
+
+- JPEG-, PNG- und WebP-Upload per Dateiauswahl oder Drag-and-drop, maximal 5 MB, mit Vorschau und Entfernen
+- Optionale Angaben zu Fundort, Farbe, Größe und Beobachtungen
+- Zeitverzögerte, zufällige Demo-Ergebnisse für Amethyst, Granit und Pyrit
+- Ergebnisbericht mit Confidence-Stufe, Merkmalen, Kontext, Alternativen, Tests und Grenzen
+- Analysehistorie mit Datum, Detailansicht und Löschen
+- Keine Bilddateien oder Base64-Bilder werden gespeichert
+
+## Projektstruktur
+
+```text
+src/app/
+├── core/
+│   ├── repositories/  # Repository-Abstraktion und LocalStorage-Implementierung
+│   └── services/      # Simulierter Analyse-Service
+├── features/
+│   ├── analyzer/      # Analyzer und Upload-Validierung
+│   ├── history/       # Historie
+│   └── results/       # Ergebnisbericht
+└── shared/models/     # Analyse-Request und Ergebnis-Typen
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Datenfluss
 
-## Code scaffolding
+1. Die Analyzer-Seite validiert Bildtyp und Dateigröße und zeigt eine lokale Vorschau.
+2. Der Analyse-Service simuliert die Verarbeitung und erstellt einen klar als Demo markierten Beispielbericht.
+3. Das Repository speichert strukturierte Daten unter `stone-analyzer.analyses.v1` samt Schema-Version, UUID und Zeitstempel.
+4. Die Router-Seiten laden einzelne Berichte oder die chronologisch sortierte Historie über das Repository-Interface.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Das Repository-Interface kann später durch eine Supabase-Implementierung ersetzt werden. In v0.1 gibt es keine Supabase-, Authentifizierungs-, Backend- oder OpenAI-Abhängigkeiten.
 
-```bash
-ng generate component component-name
-```
+## Lokal starten
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+Voraussetzungen: Node.js und npm passend zur installierten Angular CLI.
 
 ```bash
-ng build
+npm install
+npm start
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Die Anwendung ist anschließend unter `http://localhost:4200` verfügbar.
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Build und Tests
 
 ```bash
-ng test
+npm run build
+npm test
 ```
 
-## Running end-to-end tests
+Die Tests decken Upload-Validierung, Demo-Service und LocalStorage-Repository ab.
 
-For end-to-end (e2e) testing, run:
+## Spätere Erweiterungen
 
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Backend-Endpunkt für echte Bildanalyse und sichere OpenAI-Anbindung
+- Migration des Repositorys auf Supabase
+- Authentifizierung und Synchronisierung zwischen Geräten
+- Erweiterte Analyseberichte und Export
