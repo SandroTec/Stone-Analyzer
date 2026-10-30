@@ -1,5 +1,6 @@
 export type Confidence = 'low' | 'medium' | 'high';
-export type AnalysisCategory = 'Mineral' | 'Gestein';
+export type AnalysisCategory = 'Mineral' | 'Gestein' | 'Unbekannt';
+export type AnalysisMode = 'mock' | 'live';
 
 export interface AnalysisRequest {
   image: File;
@@ -14,7 +15,7 @@ export interface StoneAnalysis {
   createdAt: string;
   schemaVersion: 1;
   source: 'demo' | 'ai';
-  identification: { name: string; category: AnalysisCategory; confidence: Confidence };
+  identification: { name: string; category: AnalysisCategory; confidence: Confidence; reasoning: string };
   summary: string;
   visibleFeatures: string[];
   geologicalContext: string;

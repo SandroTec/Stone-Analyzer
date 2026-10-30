@@ -1,2 +1,39 @@
 /* You can add global styles to this file, and also import other style files */
-*{box-sizing:border-box}html{min-height:100%;background:#f5f3ed}body{margin:0;color:#292f29;font-family:Arial,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}button,input,textarea{font:inherit}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #b18552;outline-offset:3px}::selection{background:#d7c3a4}
+*{box-sizing:border-box}html{min-height:100%;background:#f0f3ef;font-size:16px}body{margin:0;color:#26342d;font:400 16px/1.5 Arial,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}button,input,textarea{font:inherit}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #6f9277;outline-offset:3px}::selection{background:#c9d9ca}
+
+/* Keep every label and supporting line readable at 16px or larger. */
+app-analyzer-page .eyebrow,app-analyzer-page .step,app-analyzer-page .panel-head p,app-analyzer-page .dropzone span,app-analyzer-page .dropzone small,app-analyzer-page .file-button,app-analyzer-page label,app-analyzer-page input,app-analyzer-page textarea,app-analyzer-page .demo-note p,app-analyzer-page .analyze,app-analyzer-page .error{font-size:16px!important}
+app-history-page .eyebrow,app-history-page .heading p,app-history-page .heading>a,app-history-page .info p,app-history-page .confidence,app-history-page .open,app-history-page .empty p{font-size:16px!important}
+app-result-page .back,app-result-page .eyebrow,app-result-page .muted,app-result-page .demo-badge,app-result-page .confidence,app-result-page .card p,app-result-page .card li,app-result-page .limits,app-result-page .limits li,app-result-page .new{font-size:16px!important}
+
+app-analyzer-page .intro{max-width:1040px!important;display:flex;align-items:end;justify-content:space-between;gap:24px;margin:8px auto 30px!important}
+app-analyzer-page .intro h1{font:500 clamp(38px,5vw,48px)/1.1 Arial,sans-serif!important;letter-spacing:-.04em!important;color:#263a2d;margin:8px 0!important}
+app-analyzer-page .intro .eyebrow,app-analyzer-page .step{color:#4b7054!important;letter-spacing:.08em!important}
+app-analyzer-page .lede{max-width:700px!important;color:#52645a!important;font-size:18px!important;margin:0!important}
+app-analyzer-page .mode-pill{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid #bfd0c0;border-radius:999px;background:#e5eee4;color:#385b40;font-size:16px;letter-spacing:.04em;font-weight:500;white-space:nowrap}
+app-analyzer-page .workspace{max-width:1040px!important;gap:24px!important}
+app-analyzer-page .panel{background:#fbfcfa!important;border:1px solid #d9e2d9!important;border-radius:16px!important;box-shadow:0 14px 40px #213a2910!important;padding:28px!important}
+app-analyzer-page .panel-head{margin-bottom:26px!important}
+app-analyzer-page .panel h2{font-size:24px!important;color:#293b30}
+app-analyzer-page .panel-head p{color:#5a6b60!important}
+app-analyzer-page .dropzone{min-height:420px!important;background:#edf2ed!important;border:1px dashed #9db29f!important;border-radius:12px!important;color:#34493a!important}
+app-analyzer-page .dropzone span,app-analyzer-page .dropzone small{color:#52675a!important}
+app-analyzer-page .upload-icon{font-size:40px!important;color:#52765a!important}
+app-analyzer-page .file-button,app-analyzer-page .analyze{min-height:48px!important;background:#315a3a!important;color:#fff!important;border-radius:8px!important}
+app-analyzer-page label{color:#3b5141!important;gap:9px!important}
+app-analyzer-page input,app-analyzer-page textarea{border-color:#ccd8cc!important;border-radius:8px!important;background:#fff!important;color:#26342d!important;padding:13px!important}
+app-analyzer-page input:focus,app-analyzer-page textarea:focus{border-color:#65856a!important;box-shadow:0 0 0 3px #65856a22!important}
+app-analyzer-page .demo-note{background:#e8efe7!important;border-radius:9px!important;color:#405746!important;padding:16px!important}
+app-analyzer-page .demo-note p{line-height:1.5!important}
+app-analyzer-page .analyze{align-items:center!important;padding:15px 18px!important}
+app-analyzer-page .analyze:disabled{background:#718473!important}
+app-analyzer-page .error{color:#a1342b!important}
+app-history-page .history,app-result-page .report{max-width:960px!important}
+app-history-page .eyebrow,app-result-page .eyebrow{color:#4b7054!important}
+app-history-page .heading>a,app-history-page .empty>a,app-result-page .new{background:#315a3a!important;color:#fff!important;font-size:16px!important}
+app-history-page .entry,app-history-page .empty,app-result-page .card{background:#fbfcfa!important;border-color:#d9e2d9!important}
+app-history-page .symbol{background:#e5eee4!important;color:#426349!important}
+app-result-page .demo-badge{color:#385b40!important;border-color:#bfd0c0!important;background:#e5eee4!important}
+app-result-page .live-badge{color:#315d3a!important;background:#dcebdd!important}
+app-result-page .limits{background:#e8efe7!important;color:#3b5141!important}
+@media(max-width:760px){app-analyzer-page .intro{align-items:flex-start!important;flex-direction:column!important;margin:4px auto 24px!important}app-analyzer-page .dropzone{min-height:260px!important}app-analyzer-page .panel{padding:20px!important}}

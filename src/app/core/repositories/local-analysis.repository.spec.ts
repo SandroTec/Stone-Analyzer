@@ -1,7 +1,7 @@
 import { LocalAnalysisRepository } from './local-analysis.repository';
 import { StoneAnalysis } from '../../shared/models/stone-analysis.model';
 
-const sample = (id: string, createdAt: string): StoneAnalysis => ({ id, createdAt, schemaVersion: 1, source: 'demo', identification: { name: 'Pyrit', category: 'Mineral', confidence: 'medium' }, summary: 'Demo', visibleFeatures: [], geologicalContext: '', alternatives: [], recommendedTests: [], limitations: [] });
+const sample = (id: string, createdAt: string): StoneAnalysis => ({ id, createdAt, schemaVersion: 1, source: 'demo', identification: { name: 'Pyrit', category: 'Mineral', confidence: 'medium', reasoning: 'Demo' }, summary: 'Demo', visibleFeatures: [], geologicalContext: '', alternatives: [], recommendedTests: [], limitations: [] });
 
 describe('LocalAnalysisRepository', () => {
   const key = 'stone-analyzer.analyses.v1';

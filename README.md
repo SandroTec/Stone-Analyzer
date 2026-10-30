@@ -67,3 +67,53 @@ Die Tests decken Upload-Validierung, Demo-Service und LocalStorage-Repository ab
 - Migration des Repositorys auf Supabase
 - Authentifizierung und Synchronisierung zwischen Geräten
 - Erweiterte Analyseberichte und Export
+
+## Backend v0.2
+
+Das optionale Backend liegt separat unter `server/` und verwendet Node.js, Express 5, TypeScript, Zod, Multer und das offizielle OpenAI SDK. Uploads werden nur im Arbeitsspeicher gehalten. Die Angular-App spricht ausschließlich den relativen Pfad `/api`; beim lokalen Dev-Server leitet `proxy.conf.json` diesen an `127.0.0.1:3000` weiter.
+
+### Installation und Mock-Start
+
+In zwei PowerShell-Terminals im Projektordner:
+
+```powershell
+npm install
+npm install --prefix server
+npm start
+```
+
+Im zweiten Terminal:
+
+```powershell
+npm run start:backend
+```
+
+Frontend und Backend starten standardmäßig im Mock-Modus. Die Analyzer-Seite nutzt in diesem Modus ausschließlich lokale Beispieldaten. Das Backend beantwortet `/api/health`; es lehnt Analyse-Requests ab, solange der Live-Modus nicht ausdrücklich eingeschaltet wurde.
+
+### OpenAI Live-Modus bewusst einschalten
+
+1. Erstelle `server/.env` aus `server/.env.example` (PowerShell: `Copy-Item server/.env.example server/.env`). Eine vorhandene `.env` nicht überschreiben.
+2. Trage den persönlichen Schlüssel **nur** in `server/.env` als `OPENAI_API_KEY=sk-…` ein und setze `ANALYSIS_MODE=live`.
+3. Ändere in `src/environments/environment.ts` `analysisMode` bewusst von `'mock'` auf `'live'`.
+4. Starte das Frontend und Backend neu. Jeder Klick auf „KI-Analyse starten“ kann einen kostenpflichtigen OpenAI-Request auslösen.
+
+Der API-Key wird weder in Angular-Konfigurationen noch an den Browser übertragen. Der Backend-Start verweigert Live-Modus bei fehlendem oder offensichtlich ungültigem Schlüssel. Die Prüfung bestätigt nicht per Netzwerkaufruf, ob ein Schlüssel vom OpenAI-Konto akzeptiert wird.
+
+### API und Analyseformat
+
+- `GET /api/health` → `{ "status": "ok" }`
+- `POST /api/analyze` → `multipart/form-data` mit `image` und optional `location`, `color`, `size`, `notes`
+- Erfolgsantwort: fachlicher Analysebericht mit `identification` (einschließlich `reasoning`), `summary`, `visibleFeatures`, `geologicalContext`, `alternatives`, `recommendedTests` und `limitations`
+
+Das Backend prüft Bildsignatur und MIME-Typ, Feldlängen und strukturierte OpenAI-Ausgabe. Es ergänzt keine UUID oder Zeitstempel und speichert keine Ergebnisse. Angular versieht den Bericht nach Erfolg mit ID, Zeitstempel und Quelle und speichert ihn wie bisher im LocalStorage. Der In-Process-Rate-Limit-Zähler gilt pro Prozess; öffentliches Hosting mit mehreren Instanzen benötigt später einen zentralen Store. CORS lässt nur `FRONTEND_ORIGIN` zu.
+
+### Backend-Entwicklung und Tests
+
+```powershell
+npm run build:backend
+npm run test:backend
+npm run build
+npm test -- --watch=false
+```
+
+Die Backend-Tests mocken den OpenAI-Client. Sie führen keine kostenpflichtigen API-Aufrufe aus.

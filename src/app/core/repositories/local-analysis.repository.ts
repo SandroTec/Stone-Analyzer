@@ -14,7 +14,8 @@ function isAnalysis(value: unknown): value is StoneAnalysis {
     && typeof item.identification === 'object'
     && item.identification !== null
     && typeof item.identification.name === 'string'
-    && (item.identification.category === 'Mineral' || item.identification.category === 'Gestein')
+    && typeof item.identification.reasoning === 'string'
+    && (item.identification.category === 'Mineral' || item.identification.category === 'Gestein' || item.identification.category === 'Unbekannt')
     && ['low', 'medium', 'high'].includes(item.identification.confidence)
     && typeof item.summary === 'string'
     && Array.isArray(item.visibleFeatures)
