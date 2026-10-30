@@ -18,7 +18,7 @@ describe('StoneAnalysisService', () => {
     expect(result.source).toBe('demo');
     expect(['Amethyst', 'Granit', 'Pyrit']).toContain(result.identification.name);
     expect(result.id).toBeTruthy();
-    expect(save).toHaveBeenCalledWith(result);
+    expect(save).toHaveBeenCalledWith(result, expect.any(File));
   });
 });
 
@@ -61,7 +61,7 @@ describe('StoneAnalysisService live file flow', () => {
     expect(result.identification.name).toBe('Quarz');
     expect(result.id).toBeTruthy();
     expect(Number.isNaN(Date.parse(result.createdAt))).toBe(false);
-    expect(save).toHaveBeenCalledWith(result);
+    expect(save).toHaveBeenCalledWith(result, expect.any(File));
   });
 
   it('does not persist a failed API request', async () => {

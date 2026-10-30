@@ -4,7 +4,7 @@ import multer from 'multer';
 import { fileTypeFromBuffer } from 'file-type';
 import { AppConfig } from './config.js';
 import { StoneAnalyzer } from './services/openai.service.js';
-import { AnalysisFieldsSchema } from './models/stone-analysis.schema.js';
+import { AnalysisFieldsSchema, ExtendedAnalysisFieldsSchema, StoneAnalysisReportSchema } from './models/stone-analysis.schema.js';
 import { createRateLimiter } from './middleware/rate-limit.js';
 import { AppError } from './utils/app-error.js';
 
@@ -32,6 +32,15 @@ export function createApp(config: AppConfig, analyzer: StoneAnalyzer) {
       else callback(null, true);
     }
   });
+  const extendedUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: Math.floor(config.MAX_IMAGE_SIZE_MB * 1024 * 1024), files: 4, fields: 5, parts: 9 },
+    fileFilter(_req, file, callback) {
+      if (file.fieldname !== 'images') callback(new AppError(400, 'Zusatzbilder müssen im Feld "images" übertragen werden.', 'invalid_upload'));
+      else if (!MIME_TYPES.has(file.mimetype)) callback(new AppError(415, 'Nur JPEG-, PNG- und WebP-Bilder werden unterstützt.', 'unsupported_image_type'));
+      else callback(null, true);
+    }
+  });
 
   app.post('/api/analyze', createRateLimiter(config.RATE_LIMIT_WINDOW_MS, config.RATE_LIMIT_MAX_REQUESTS), upload.single('image'), async (req, res) => {
     if (config.ANALYSIS_MODE !== 'live') {
@@ -48,9 +57,29 @@ export function createApp(config: AppConfig, analyzer: StoneAnalyzer) {
     res.status(200).json(report);
   });
 
+  app.post('/api/analyze/extended', createRateLimiter(config.RATE_LIMIT_WINDOW_MS, config.RATE_LIMIT_MAX_REQUESTS), extendedUpload.array('images', 4), async (req, res) => {
+    if (config.ANALYSIS_MODE !== 'live') throw new AppError(503, 'Das Backend ist im Mock-Modus. Aktiviere Live-Modus bewusst in server/.env, um kostenpflichtige Anfragen zu erlauben.', 'live_mode_disabled');
+    const files = (req.files ?? []) as Express.Multer.File[];
+    const fields = ExtendedAnalysisFieldsSchema.safeParse({ location: req.body.location, color: req.body.color, size: req.body.size, notes: req.body.notes });
+    if (!fields.success) throw new AppError(400, 'Alle Beobachtungsfelder müssen ausgefüllt sein und innerhalb der erlaubten Länge liegen.', 'invalid_fields');
+    if (typeof req.body.previousReport !== 'string') throw new AppError(400, 'Der vorherige Analysebericht fehlt.', 'previous_report_required');
+    let previousValue: unknown;
+    try { previousValue = JSON.parse(req.body.previousReport); }
+    catch { throw new AppError(400, 'Der vorherige Analysebericht ist ungültig.', 'invalid_previous_report'); }
+    const previous = StoneAnalysisReportSchema.safeParse(previousValue);
+    if (!previous.success) throw new AppError(400, 'Der vorherige Analysebericht hat ein ungültiges Format.', 'invalid_previous_report');
+    const images: { buffer: Buffer; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' }[] = [];
+    for (const file of files) {
+      const detected = await fileTypeFromBuffer(file.buffer);
+      if (!detected || !MIME_TYPES.has(detected.mime) || detected.mime !== file.mimetype) throw new AppError(415, 'Mindestens eine Zusatzdatei ist kein gültiges JPEG-, PNG- oder WebP-Bild.', 'invalid_image_signature');
+      images.push({ buffer: file.buffer, mimeType: detected.mime as 'image/jpeg' | 'image/png' | 'image/webp' });
+    }
+    res.status(200).json(await analyzer.analyzeExtended(images, fields.data, previous.data));
+  });
+
   const errors: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
     if (error instanceof multer.MulterError) {
-      if (error.code === 'LIMIT_FILE_SIZE') { res.status(413).json({ error: { code: 'image_too_large', message: `Das Bild darf höchstens ${config.MAX_IMAGE_SIZE_MB} MB groß sein.` } }); return; }
+      if (error.code === 'LIMIT_FILE_SIZE') { res.status(413).json({ error: { code: 'image_too_large', message: `Jedes Bild darf höchstens ${config.MAX_IMAGE_SIZE_MB} MB groß sein.` } }); return; }
       res.status(400).json({ error: { code: 'invalid_upload', message: 'Der Upload muss genau ein Bild im Feld "image" enthalten.' } }); return;
     }
     if (error instanceof AppError) { res.status(error.statusCode).json({ error: { code: error.code, message: error.message } }); return; }

@@ -2,10 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AnalysisRepository } from '../repositories/analysis.repository';
-import { AnalysisRequest, StoneAnalysis } from '../../shared/models/stone-analysis.model';
+import { AnalysisReport, AnalysisRequest, StoneAnalysis } from '../../shared/models/stone-analysis.model';
 import { environment } from '../../../environments/environment';
-
-type AnalysisReport = Omit<StoneAnalysis, 'id' | 'createdAt' | 'schemaVersion' | 'source'>;
 
 @Injectable({ providedIn: 'root' })
 export class StoneAnalysisService {
@@ -39,8 +37,42 @@ export class StoneAnalysisService {
       await new Promise((resolve) => setTimeout(resolve, 650));
       report = this.demos[Math.floor(Math.random() * this.demos.length)];
     }
-    const analysis: StoneAnalysis = { ...report, source: environment.analysisMode === 'live' ? 'ai' : 'demo', id: crypto.randomUUID(), createdAt: new Date().toISOString(), schemaVersion: 1 };
-    await this.repository.save(analysis);
+    const analysis: StoneAnalysis = { ...report, source: environment.analysisMode === 'live' ? 'ai' : 'demo', analysisLevel: 'basic', observations: { location: request.location ?? '', color: request.color ?? '', approximateSize: request.approximateSize ?? '', observations: request.observations ?? '' }, id: crypto.randomUUID(), createdAt: new Date().toISOString(), schemaVersion: 1 };
+    await this.repository.save(analysis, request.image);
     return analysis;
+  }
+
+  async analyzeExtended(base: StoneAnalysis, fields: NonNullable<StoneAnalysis['observations']>, images: File[]): Promise<StoneAnalysis> {
+    if (images.length > 4) throw new Error('Es sind höchstens vier zusätzliche Bilder erlaubt.');
+    let report: AnalysisReport;
+    if (environment.analysisMode === 'live') {
+      const form = new FormData();
+      form.append('location', fields.location);
+      form.append('color', fields.color);
+      form.append('size', fields.approximateSize);
+      form.append('notes', fields.observations);
+      form.append('previousReport', JSON.stringify(this.reportOnly(base)));
+      images.forEach((image) => form.append('images', image, image.name));
+      try { report = await firstValueFrom(this.http.post<AnalysisReport>('/api/analyze/extended', form)); }
+      catch (error) {
+        if (error instanceof HttpErrorResponse) {
+          const message = error.error?.error?.message;
+          throw new Error(typeof message === 'string' ? message : 'Backend nicht erreichbar. Prüfe, ob der Server läuft.');
+        }
+        throw error;
+      }
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      report = { ...this.demos[0], summary: `Demo-Ergebnis einer erweiterten Analyse zu ${base.identification.name}. Es wurden keine Bilder durch eine KI ausgewertet.` };
+    }
+    const extended: StoneAnalysis = { ...report, source: environment.analysisMode === 'live' ? 'ai' : 'demo', analysisLevel: 'extended', parentAnalysisId: base.id, observations: fields, id: crypto.randomUUID(), createdAt: new Date().toISOString(), schemaVersion: 1 };
+    await this.repository.save({ ...base, extendedAnalysisId: extended.id });
+    await this.repository.save(extended, images);
+    return extended;
+  }
+
+  private reportOnly(analysis: StoneAnalysis): AnalysisReport {
+    const { identification, summary, visibleFeatures, geologicalContext, alternatives, recommendedTests, limitations } = analysis;
+    return { identification, summary, visibleFeatures, geologicalContext, alternatives, recommendedTests, limitations };
   }
 }

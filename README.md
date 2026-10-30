@@ -6,7 +6,7 @@ Eine responsive Angular-SPA für die digitale Dokumentation von Gesteins- und Mi
 
 - Angular 21 mit Standalone Components, Angular Router und moderner Template-Syntax
 - TypeScript, SCSS, Signals und Reactive Forms
-- Versionierte LocalStorage-Persistenz hinter einem asynchronen Repository-Interface
+- Asynchrones Repository mit IndexedDB für Analyseberichte und Originalbilder
 - Vitest über den Angular Unit-Test-Builder
 
 ## MVP-Funktionen
@@ -16,14 +16,14 @@ Eine responsive Angular-SPA für die digitale Dokumentation von Gesteins- und Mi
 - Zeitverzögerte, zufällige Demo-Ergebnisse für Amethyst, Granit und Pyrit
 - Ergebnisbericht mit Confidence-Stufe, Merkmalen, Kontext, Alternativen, Tests und Grenzen
 - Analysehistorie mit Datum, Detailansicht und Löschen
-- Keine Bilddateien oder Base64-Bilder werden gespeichert
+- Originalbilddaten bleiben lokal als Binärdaten in IndexedDB; Base64 wird nicht verwendet
 
 ## Projektstruktur
 
 ```text
 src/app/
 ├── core/
-│   ├── repositories/  # Repository-Abstraktion und LocalStorage-Implementierung
+│   ├── repositories/  # Repository-Abstraktion und IndexedDB-Implementierung
 │   └── services/      # Simulierter Analyse-Service
 ├── features/
 │   ├── analyzer/      # Analyzer und Upload-Validierung
@@ -36,8 +36,9 @@ src/app/
 
 1. Die Analyzer-Seite validiert Bildtyp und Dateigröße und zeigt eine lokale Vorschau.
 2. Der Analyse-Service simuliert die Verarbeitung und erstellt einen klar als Demo markierten Beispielbericht.
-3. Das Repository speichert strukturierte Daten unter `stone-analyzer.analyses.v1` samt Schema-Version, UUID und Zeitstempel.
-4. Die Router-Seiten laden einzelne Berichte oder die chronologisch sortierte Historie über das Repository-Interface.
+3. Das Repository speichert Analyse und Originalbilddaten unter derselben Analyse-ID in IndexedDB.
+4. Die Router-Seiten laden Berichte und Bilder über das Repository-Interface; die Historie zeigt Bildvorschauen.
+5. Vorhandene LocalStorage-Analysen werden beim ersten Zugriff in IndexedDB übernommen. Der alte Eintrag wird erst nach erfolgreicher Migration entfernt.
 
 Das Repository-Interface kann später durch eine Supabase-Implementierung ersetzt werden. In v0.1 gibt es keine Supabase-, Authentifizierungs-, Backend- oder OpenAI-Abhängigkeiten.
 
@@ -59,7 +60,7 @@ npm run build
 npm test
 ```
 
-Die Tests decken Upload-Validierung, Demo-Service und LocalStorage-Repository ab.
+Die Tests decken Upload-Validierung, Demo-Service und IndexedDB-Repository ab.
 
 ## Spätere Erweiterungen
 
@@ -103,9 +104,12 @@ Der API-Key wird weder in Angular-Konfigurationen noch an den Browser übertrage
 
 - `GET /api/health` → `{ "status": "ok" }`
 - `POST /api/analyze` → `multipart/form-data` mit `image` und optional `location`, `color`, `size`, `notes`
+- `POST /api/analyze/extended` → `multipart/form-data` mit erforderlichen `location`, `color`, `size`, `notes`, dem validierten `previousReport` sowie null bis vier `images`
 - Erfolgsantwort: fachlicher Analysebericht mit `identification` (einschließlich `reasoning`), `summary`, `visibleFeatures`, `geologicalContext`, `alternatives`, `recommendedTests` und `limitations`
 
-Das Backend prüft Bildsignatur und MIME-Typ, Feldlängen und strukturierte OpenAI-Ausgabe. Es ergänzt keine UUID oder Zeitstempel und speichert keine Ergebnisse. Angular versieht den Bericht nach Erfolg mit ID, Zeitstempel und Quelle und speichert ihn wie bisher im LocalStorage. Der In-Process-Rate-Limit-Zähler gilt pro Prozess; öffentliches Hosting mit mehreren Instanzen benötigt später einen zentralen Store. CORS lässt nur `FRONTEND_ORIGIN` zu.
+Das Backend prüft Bildsignatur und MIME-Typ, Feldlängen und strukturierte OpenAI-Ausgabe. Es ergänzt keine UUID oder Zeitstempel und speichert keine Ergebnisse. Angular versieht den Bericht nach Erfolg mit ID, Zeitstempel und Quelle und speichert Bericht und Originalbild lokal in IndexedDB. Bilder werden nicht mit dem Analysebericht an OpenAI zurückgegeben. Die lokalen Daten werden nicht zwischen Geräten synchronisiert. Der In-Process-Rate-Limit-Zähler gilt pro Prozess; öffentliches Hosting mit mehreren Instanzen benötigt später einen zentralen Store. CORS lässt nur `FRONTEND_ORIGIN` zu.
+
+Die erweiterte Analyse startet vom Ergebnisbericht, übernimmt gespeicherte Beobachtungen als vorausgefüllte Pflichtfelder und akzeptiert bis zu vier optionale Zusatzbilder. Der Folgebericht wird separat gespeichert und mit dem Ausgangsbericht verknüpft; Zusatzbilder bleiben lokal beim Folgeeintrag. Für diesen Ablauf stellt das Backend den separaten Endpunkt `/api/analyze/extended` bereit und sendet den vorherigen fachlichen Bericht, die Pflichtangaben und gewählte Zusatzbilder an das KI-Modell. Die Verarbeitung kann länger dauern und zusätzliche API-Kosten verursachen.
 
 ### Backend-Entwicklung und Tests
 

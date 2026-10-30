@@ -2,7 +2,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { AnalysisRepository } from './core/repositories/analysis.repository';
-import { LocalAnalysisRepository } from './core/repositories/local-analysis.repository';
+import { IndexedDbAnalysisRepository } from './core/repositories/indexed-db-analysis.repository';
 
 import { routes } from './app.routes';
 
@@ -11,6 +11,6 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(),
-    { provide: AnalysisRepository, useExisting: LocalAnalysisRepository }
+    { provide: AnalysisRepository, useExisting: IndexedDbAnalysisRepository }
   ]
 };

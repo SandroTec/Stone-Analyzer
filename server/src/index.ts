@@ -5,7 +5,10 @@ import { OpenAIService } from './services/openai.service.js';
 
 try {
   const config = loadConfig();
-  const analyzer = config.ANALYSIS_MODE === 'live' ? new OpenAIService(config) : { analyze: async () => { throw new Error('Live-Modus ist deaktiviert.'); } };
+  const analyzer = config.ANALYSIS_MODE === 'live' ? new OpenAIService(config) : {
+    analyze: async () => { throw new Error('Live-Modus ist deaktiviert.'); },
+    analyzeExtended: async () => { throw new Error('Live-Modus ist deaktiviert.'); }
+  };
   const app = createApp(config, analyzer);
   app.listen(config.PORT, '127.0.0.1', () => {
     console.log(`Stone Analyzer API läuft unter http://127.0.0.1:${config.PORT} (Modus: ${config.ANALYSIS_MODE}).`);

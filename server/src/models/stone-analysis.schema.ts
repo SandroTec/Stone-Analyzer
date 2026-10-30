@@ -45,4 +45,9 @@ export const AnalysisFieldsSchema = z.object({
   notes: z.string().trim().max(1200).optional()
 }).strict();
 
+export const ExtendedAnalysisFieldsSchema = z.object({
+  location: text(200), color: text(100), size: text(100), notes: text(1200)
+}).strict();
+
 export type AnalysisFields = z.infer<typeof AnalysisFieldsSchema>;
+export type ExtendedAnalysisFields = z.infer<typeof ExtendedAnalysisFieldsSchema>;
