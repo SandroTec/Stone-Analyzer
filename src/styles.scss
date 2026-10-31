@@ -2,6 +2,15 @@
 *{box-sizing:border-box}html{min-height:100%;background:#f0f3ef;font-size:16px}body{margin:0;color:#26342d;font:400 16px/1.5 Arial,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}button,input,textarea{font:inherit}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #6f9277;outline-offset:3px}::selection{background:#c9d9ca}
 
 /* Keep every label and supporting line readable at 16px or larger. */
+
+/* Shared, always-visible map controls for the map page and location picker. */
+.map-zoom-controls{position:absolute;z-index:1000;top:14px;left:14px;display:grid;gap:6px}
+.map-zoom-controls button,.map-status-warning button{min-width:44px;min-height:44px;border:1px solid #b6c9b7;border-radius:8px;background:#fbfcfa;color:#315a3a;font-size:22px;font-weight:700;box-shadow:0 2px 8px #20302530;cursor:pointer}
+.map-zoom-controls button:disabled{opacity:.55;cursor:not-allowed}
+.map-status-warning{position:absolute;z-index:1000;left:14px;right:14px;bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 10px 9px 14px;border:1px solid #e4c7a0;border-radius:9px;background:#fffaf0;color:#644a24;box-shadow:0 2px 8px #20302530}
+.map-status-warning span{font-size:16px}
+.map-status-warning button{padding:7px 12px;font-size:16px;box-shadow:none}
+@media(max-width:650px){.map-status-warning{align-items:stretch;flex-direction:column}.map-status-warning button{width:100%}}
 app-analyzer-page .eyebrow,app-analyzer-page .step,app-analyzer-page .panel-head p,app-analyzer-page .dropzone span,app-analyzer-page .dropzone small,app-analyzer-page .file-button,app-analyzer-page label,app-analyzer-page input,app-analyzer-page textarea,app-analyzer-page .demo-note p,app-analyzer-page .analyze,app-analyzer-page .error{font-size:16px!important}
 app-history-page .eyebrow,app-history-page .heading p,app-history-page .heading>a,app-history-page .info p,app-history-page .confidence,app-history-page .open,app-history-page .empty p{font-size:16px!important}
 app-result-page .back,app-result-page .eyebrow,app-result-page .muted,app-result-page .demo-badge,app-result-page .confidence,app-result-page .card p,app-result-page .card li,app-result-page .limits,app-result-page .limits li,app-result-page .new{font-size:16px!important}

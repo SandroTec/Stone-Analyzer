@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { AnalysisRepository } from './analysis.repository';
 import { StoneAnalysis } from '../../shared/models/stone-analysis.model';
+import { isFindLocation } from '../../shared/models/find-location.model';
 
 interface StoredLegacyAnalyses { schemaVersion: 1; analyses: StoneAnalysis[]; }
 interface StoredImage { id: string; analysisId?: string; index?: number; data: ArrayBuffer; mimeType: string; }
@@ -23,7 +24,8 @@ function isAnalysis(value: unknown): value is StoneAnalysis {
     && typeof item.geologicalContext === 'string'
     && Array.isArray(item.alternatives)
     && Array.isArray(item.recommendedTests)
-    && Array.isArray(item.limitations);
+    && Array.isArray(item.limitations)
+    && (item.findLocation === undefined || isFindLocation(item.findLocation));
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {

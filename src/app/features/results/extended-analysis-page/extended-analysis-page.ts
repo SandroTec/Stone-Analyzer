@@ -5,8 +5,10 @@ import { AnalysisRepository } from '../../../core/repositories/analysis.reposito
 import { StoneAnalysisService } from '../../../core/services/stone-analysis.service';
 import { StoneAnalysis } from '../../../shared/models/stone-analysis.model';
 import { validateImage } from '../../analyzer/image-upload/image-validation';
+import { LocationPickerComponent } from '../../../shared/components/location-picker/location-picker';
+import { FindLocation } from '../../../shared/models/find-location.model';
 
-@Component({ selector: 'app-extended-analysis-page', imports: [ReactiveFormsModule, RouterLink], template: `
+@Component({ selector: 'app-extended-analysis-page', imports: [ReactiveFormsModule, RouterLink, LocationPickerComponent], template: `
   @if (loadingBase()) { <p class="state">Ausgangsanalyse wird geladen …</p> }
   @else if (!base()) { <section class="state"><h1>Analyse nicht gefunden</h1><p>Der Ausgangsbericht ist nicht mehr verfügbar.</p></section> }
   @else { <main class="extended"><a class="back" [routerLink]="['/results', base()!.id]">← Zurück zum Bericht</a><p class="eyebrow">FELDNOTIZEN · VERTIEFUNG</p><h1>Erweiterte Analyse</h1><p class="lede">Ergänze deine Beobachtungen. Die Angaben sind erforderlich; bis zu vier zusätzliche Fotos sind optional. Das Originalfoto wird automatisch übernommen.</p>
@@ -14,6 +16,7 @@ import { validateImage } from '../../analyzer/image-upload/image-validation';
       <label>Fundort *<input required formControlName="location" placeholder="z. B. Harz, Deutschland" /></label>
       <div class="row"><label>Farbe *<input required formControlName="color" placeholder="z. B. violett, weiß" /></label><label>Ungefähre Größe *<input required formControlName="approximateSize" placeholder="z. B. 4 cm" /></label></div>
       <label>Weitere Beobachtungen *<textarea required rows="4" formControlName="observations" placeholder="Glanz, Form, Gewicht oder Fundumstände …"></textarea></label>
+      <section class="geo-location"><div><h2>Geografischer Fundort <span>(optional)</span></h2><p>@if (base()!.findLocation && !locationExpanded()) { Der bisherige Fundort wird beibehalten. } @else if (!locationExpanded()) { Es ist kein Kartenstandort gespeichert. }</p></div><button class="location-toggle" type="button" (click)="toggleLocation()">{{ locationExpanded() ? 'Karten-Auswahl schließen' : base()!.findLocation ? 'Fundort ändern oder entfernen' : 'Fundort auswählen' }}</button>@if (locationExpanded()) { <app-location-picker [location]="findLocation()" (locationChange)="setFindLocation($event)" /> }</section>
       <h2 class="photo-title">Originalfoto</h2>@if (originalImageUrl()) { <div class="original-preview"><img [src]="originalImageUrl()" alt="Originalfoto aus der bisherigen Analyse"/><span>Wird automatisch in die erweiterte Analyse übernommen.</span></div> } @else { <p class="error" role="alert">Für diese Analyse wurde kein Originalfoto gespeichert. Die erweiterte Analyse kann deshalb nicht gestartet werden.</p> }
       <h2 class="photo-title">Zusätzliche Fotos <span>(optional, maximal 4)</span></h2><p class="sub">Wähle weitere Ansichten desselben Fundstücks, zum Beispiel Detail- und Rückseiten.</p>
       <label class="file-picker">Bilder auswählen<input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onFiles($event)" /></label>
@@ -24,7 +27,7 @@ import { validateImage } from '../../analyzer/image-upload/image-validation';
     </form></section>
   </main> }
   `, styles: [`
-    :host{display:block}.extended{max-width:760px;margin:28px auto 70px}.back{color:#315a3a;text-decoration:none;font-size:16px}.eyebrow{margin:30px 0 8px;color:#9b673d;font-size:16px;font-weight:700;letter-spacing:.15em}.extended h1{font:500 clamp(42px,6vw,58px) Georgia,serif;letter-spacing:-.04em;margin:0 0 12px;color:#293b30}.lede{font-size:18px;color:#52645a;line-height:1.6;margin:0 0 24px}.panel{padding:28px;background:#fffefa;border:1px solid #e6e1d7;border-radius:14px;box-shadow:0 16px 48px #33250c0a}.panel h2{font:500 24px Georgia,serif;color:#293b30;margin:0 0 8px}.sub{font-size:16px;color:#69685f;line-height:1.55;margin:0 0 20px}form{display:flex;flex-direction:column;gap:17px}label{display:flex;flex-direction:column;gap:7px;font-size:16px;font-weight:600;color:#55534c}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}input:not([type=file]),textarea{width:100%;box-sizing:border-box;border:1px solid #e0dbd0;border-radius:7px;padding:12px;background:#fffefa;font:16px Arial;color:#292d28}input:focus,textarea:focus{outline:2px solid #9b673d55;border-color:#9b673d}textarea{resize:vertical}.photo-title{margin:8px 0 -10px!important}.photo-title span{font:16px Arial;color:#68766b}.original-preview{display:flex;align-items:center;gap:14px;padding:10px;border:1px solid #dedbd2;border-radius:8px;color:#52645a;font-size:16px}.original-preview img{width:92px;height:72px;object-fit:cover;border-radius:5px}.file-picker{display:inline-flex;align-self:flex-start;position:relative;background:#283329;color:white;padding:12px 18px;border-radius:7px;cursor:pointer}.file-picker input{position:absolute;width:1px;height:1px;opacity:0}.previews{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.previews figure{position:relative;margin:0;border:1px solid #dedbd2;border-radius:8px;padding:8px;min-width:0}.previews img{width:100%;height:100px;object-fit:cover;border-radius:5px}.previews figcaption{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:5px 0}.previews button{border:0;background:transparent;color:#8f342c;text-decoration:underline;cursor:pointer;font-size:16px;padding:3px 0}.cost-note{background:#f5f1e8;border-radius:8px;padding:14px 16px;color:#514b3f}.cost-note strong,.cost-note p{font-size:16px}.cost-note p{line-height:1.5;margin:5px 0 0}.submit{border:0;border-radius:7px;background:#283329;color:white;padding:15px;font-size:17px;font-weight:600;cursor:pointer}.submit:disabled{opacity:.5;cursor:not-allowed}.error{font-size:16px;color:#a5362b}.state{max-width:700px;margin:80px auto;text-align:center;font-size:18px}@media(max-width:650px){.panel{padding:20px}.row{grid-template-columns:1fr}.previews{grid-template-columns:repeat(2,1fr)}}
+    :host{display:block}.extended{max-width:760px;margin:28px auto 70px}.back{color:#315a3a;text-decoration:none;font-size:16px}.eyebrow{margin:30px 0 8px;color:#9b673d;font-size:16px;font-weight:700;letter-spacing:.15em}.extended h1{font:500 clamp(42px,6vw,58px) Georgia,serif;letter-spacing:-.04em;margin:0 0 12px;color:#293b30}.lede{font-size:18px;color:#52645a;line-height:1.6;margin:0 0 24px}.panel{padding:28px;background:#fffefa;border:1px solid #e6e1d7;border-radius:14px;box-shadow:0 16px 48px #33250c0a}.panel h2{font:500 24px Georgia,serif;color:#293b30;margin:0 0 8px}.sub{font-size:16px;color:#69685f;line-height:1.55;margin:0 0 20px}form{display:flex;flex-direction:column;gap:17px}label{display:flex;flex-direction:column;gap:7px;font-size:16px;font-weight:600;color:#55534c}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}input:not([type=file]),textarea{width:100%;box-sizing:border-box;border:1px solid #e0dbd0;border-radius:7px;padding:12px;background:#fffefa;font:16px Arial;color:#292d28}input:focus,textarea:focus{outline:2px solid #9b673d55;border-color:#9b673d}textarea{resize:vertical}.geo-location{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid #d9e2d9;border-radius:10px;background:#f6f8f5}.geo-location h2{font:500 21px Georgia,serif;margin:0 0 5px}.geo-location h2 span{font:16px Arial;color:#68766b}.geo-location p{font-size:16px;color:#52645a;margin:0}.location-toggle{align-self:flex-start;min-height:44px;border:1px solid #9db29f;border-radius:8px;background:#e5eee4;color:#315a3a;padding:10px 14px;font-size:16px;font-weight:600;cursor:pointer}.photo-title{margin:8px 0 -10px!important}.photo-title span{font:16px Arial;color:#68766b}.original-preview{display:flex;align-items:center;gap:14px;padding:10px;border:1px solid #dedbd2;border-radius:8px;color:#52645a;font-size:16px}.original-preview img{width:92px;height:72px;object-fit:cover;border-radius:5px}.file-picker{display:inline-flex;align-self:flex-start;position:relative;background:#283329;color:white;padding:12px 18px;border-radius:7px;cursor:pointer}.file-picker input{position:absolute;width:1px;height:1px;opacity:0}.previews{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.previews figure{position:relative;margin:0;border:1px solid #dedbd2;border-radius:8px;padding:8px;min-width:0}.previews img{width:100%;height:100px;object-fit:cover;border-radius:5px}.previews figcaption{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:5px 0}.previews button{border:0;background:transparent;color:#8f342c;text-decoration:underline;cursor:pointer;font-size:16px;padding:3px 0}.cost-note{background:#f5f1e8;border-radius:8px;padding:14px 16px;color:#514b3f}.cost-note strong,.cost-note p{font-size:16px}.cost-note p{line-height:1.5;margin:5px 0 0}.submit{border:0;border-radius:7px;background:#283329;color:white;padding:15px;font-size:17px;font-weight:600;cursor:pointer}.submit:disabled{opacity:.5;cursor:not-allowed}.error{font-size:16px;color:#a5362b}.state{max-width:700px;margin:80px auto;text-align:center;font-size:18px}@media(max-width:650px){.panel{padding:20px}.row{grid-template-columns:1fr}.previews{grid-template-columns:repeat(2,1fr)}}
   `] })
 export class ExtendedAnalysisPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
@@ -39,6 +42,9 @@ export class ExtendedAnalysisPage implements OnInit, OnDestroy {
   readonly error = signal('');
   readonly selected = signal<{file: File; url: string}[]>([]);
   readonly originalImageUrl = signal<string | null>(null);
+  readonly findLocation = signal<FindLocation | null>(null);
+  readonly locationExpanded = signal(false);
+  readonly locationEdited = signal(false);
 
   async ngOnInit(): Promise<void> {
     const id = this.route.snapshot.paramMap.get('id');
@@ -47,6 +53,7 @@ export class ExtendedAnalysisPage implements OnInit, OnDestroy {
     const originalImage = base ? await this.repository.getImage(base.id) : null;
     if (originalImage) this.originalImageUrl.set(URL.createObjectURL(originalImage));
     if (base?.observations) this.form.patchValue(base.observations);
+    this.findLocation.set(base?.findLocation ?? null);
     this.loadingBase.set(false);
   }
   ngOnDestroy(): void { this.selected().forEach(({url}) => URL.revokeObjectURL(url)); const url = this.originalImageUrl(); if (url) URL.revokeObjectURL(url); }
@@ -63,12 +70,14 @@ export class ExtendedAnalysisPage implements OnInit, OnDestroy {
     this.selected.update((current) => [...current, ...files.map((file) => ({file, url: URL.createObjectURL(file)}))]);
   }
   removeFile(url: string): void { URL.revokeObjectURL(url); this.selected.update((items) => items.filter((item) => item.url !== url)); }
+  toggleLocation(): void { this.locationExpanded.update((expanded) => !expanded); }
+  setFindLocation(location: FindLocation | null): void { this.findLocation.set(location); this.locationEdited.set(true); }
   async submit(): Promise<void> {
     const base = this.base();
     if (!base || this.form.invalid || this.submitting()) { this.form.markAllAsTouched(); return; }
     this.submitting.set(true); this.error.set('');
     try {
-      const result = await this.service.analyzeExtended(base, this.form.getRawValue(), this.selected().map(({file}) => file));
+      const result = await this.service.analyzeExtended(base, this.form.getRawValue(), this.selected().map(({file}) => file), this.locationEdited() ? this.findLocation() : undefined);
       await this.router.navigate(['/results', result.id]);
     } catch (error) { this.error.set(error instanceof Error ? error.message : 'Die erweiterte Analyse konnte nicht abgeschlossen werden.'); }
     finally { this.submitting.set(false); }

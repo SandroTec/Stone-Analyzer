@@ -1,9 +1,12 @@
+import { FindLocation } from './find-location.model';
+
 export type Confidence = 'low' | 'medium' | 'high';
 export type AnalysisCategory = 'Mineral' | 'Gestein' | 'Unbekannt';
 export type AnalysisMode = 'mock' | 'live';
 
 export interface AnalysisRequest {
   image: File;
+  findLocation?: FindLocation;
   location?: string;
   color?: string;
   approximateSize?: string;
@@ -19,6 +22,7 @@ export interface StoneAnalysis {
   parentAnalysisId?: string;
   extendedAnalysisId?: string;
   observations?: { location: string; color: string; approximateSize: string; observations: string };
+  findLocation?: FindLocation;
   identification: { name: string; category: AnalysisCategory; confidence: Confidence; reasoning: string };
   summary: string;
   visibleFeatures: string[];
@@ -28,4 +32,4 @@ export interface StoneAnalysis {
   limitations: string[];
 }
 
-export type AnalysisReport = Omit<StoneAnalysis, 'id' | 'createdAt' | 'schemaVersion' | 'source' | 'analysisLevel' | 'parentAnalysisId' | 'extendedAnalysisId' | 'observations'>;
+export type AnalysisReport = Omit<StoneAnalysis, 'id' | 'createdAt' | 'schemaVersion' | 'source' | 'analysisLevel' | 'parentAnalysisId' | 'extendedAnalysisId' | 'observations' | 'findLocation'>;
