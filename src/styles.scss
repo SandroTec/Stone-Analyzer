@@ -37,3 +37,24 @@ app-result-page .demo-badge{color:#385b40!important;border-color:#bfd0c0!importa
 app-result-page .live-badge{color:#315d3a!important;background:#dcebdd!important}
 app-result-page .limits{background:#e8efe7!important;color:#3b5141!important}
 @media(max-width:760px){app-analyzer-page .intro{align-items:flex-start!important;flex-direction:column!important;margin:4px auto 24px!important}app-analyzer-page .dropzone{min-height:260px!important}app-analyzer-page .panel{padding:20px!important}}
+
+/* Keep the analyzer's nested grids and controls inside phone-sized viewports. */
+@media(max-width:540px){
+  app-analyzer-page{display:block;min-width:0;width:100%}
+  app-analyzer-page .intro,app-analyzer-page .workspace{width:100%!important;max-width:none!important;min-width:0!important}
+  app-analyzer-page .workspace{grid-template-columns:minmax(0,1fr)!important;gap:16px!important}
+  app-analyzer-page .panel{width:100%!important;min-width:0!important;padding:16px!important}
+  app-analyzer-page .panel-head,app-analyzer-page .panel-head>div{min-width:0}
+  app-analyzer-page .panel-head{gap:10px!important;margin-bottom:20px!important}
+  app-analyzer-page .field-row{grid-template-columns:minmax(0,1fr)!important;gap:16px!important}
+  app-analyzer-page label,app-analyzer-page input,app-analyzer-page textarea{min-width:0;width:100%}
+  app-analyzer-page .intro h1{font-size:clamp(34px,10vw,42px)!important}
+  app-analyzer-page .lede{max-width:100%!important;overflow-wrap:anywhere}
+  app-analyzer-page .dropzone{width:100%;min-width:0;min-height:240px!important;padding:18px 10px;overflow:hidden;text-align:center}
+  app-analyzer-page .dropzone strong,app-analyzer-page .dropzone span,app-analyzer-page .dropzone small{max-width:100%;overflow-wrap:anywhere;text-align:center}
+  app-analyzer-page .preview{width:100%;height:240px;object-fit:contain}
+  app-analyzer-page .file-button{max-width:100%;text-align:center}
+  app-analyzer-page .demo-note{min-width:0;gap:8px!important;padding:12px!important}
+  app-analyzer-page .demo-note p{min-width:0;overflow-wrap:anywhere}
+  app-analyzer-page .analyze{width:100%;min-width:0;gap:8px}
+}
