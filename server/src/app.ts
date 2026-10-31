@@ -6,12 +6,14 @@ import { AppConfig } from './config.js';
 import { StoneAnalyzer } from './services/openai.service.js';
 import { AnalysisFieldsSchema, ExtendedAnalysisFieldsSchema, StoneAnalysisReportSchema } from './models/stone-analysis.schema.js';
 import { createRateLimiter } from './middleware/rate-limit.js';
+import { DailyAnalysisLimit } from './middleware/daily-analysis-limit.js';
 import { AppError } from './utils/app-error.js';
 
 const MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export function createApp(config: AppConfig, analyzer: StoneAnalyzer) {
   const app = express();
+  const dailyAnalysisLimit = new DailyAnalysisLimit(config.DAILY_ANALYSIS_LIMIT, config.DAILY_ANALYSIS_STATE_FILE);
   app.disable('x-powered-by');
   app.use(cors({
     origin(origin, callback) {
@@ -23,6 +25,14 @@ export function createApp(config: AppConfig, analyzer: StoneAnalyzer) {
   }));
   app.use(express.json({ limit: '32kb' }));
   app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+
+  const consumeDailyAnalysis = (res: express.Response): boolean => {
+    const result = dailyAnalysisLimit.consume();
+    if (result.allowed) return true;
+    res.setHeader('Retry-After', String(result.retryAfterSeconds));
+    res.status(429).json({ error: { code: 'daily_analysis_limit_reached', message: `Das tägliche Limit von ${result.limit} KI-Analysen ist erreicht. Neue Anfragen sind ab 00:00 UTC wieder möglich.` } });
+    return false;
+  };
 
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -53,6 +63,7 @@ export function createApp(config: AppConfig, analyzer: StoneAnalyzer) {
     }
     const fields = AnalysisFieldsSchema.safeParse(req.body);
     if (!fields.success) throw new AppError(400, 'Formulardaten ungültig oder zu lang.', 'invalid_fields');
+    if (!consumeDailyAnalysis(res)) return;
     const report = await analyzer.analyze(req.file.buffer, detected.mime as 'image/jpeg' | 'image/png' | 'image/webp', fields.data);
     res.status(200).json(report);
   });
@@ -77,6 +88,7 @@ export function createApp(config: AppConfig, analyzer: StoneAnalyzer) {
       if (!detected || !MIME_TYPES.has(detected.mime) || detected.mime !== file.mimetype) throw new AppError(415, 'Mindestens eine Datei ist kein gültiges JPEG-, PNG- oder WebP-Bild.', 'invalid_image_signature');
       images.push({ buffer: file.buffer, mimeType: detected.mime as 'image/jpeg' | 'image/png' | 'image/webp' });
     }
+    if (!consumeDailyAnalysis(res)) return;
     res.status(200).json(await analyzer.analyzeExtended(images, fields.data, previous.data));
   });
 

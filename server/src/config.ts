@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const EnvironmentSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  BACKEND_HOST: z.string().trim().min(1).default('127.0.0.1'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   ANALYSIS_MODE: z.enum(['mock', 'live']).default('mock'),
   OPENAI_API_KEY: z.string().trim().optional().transform((value) => value || undefined),
@@ -10,6 +11,8 @@ const EnvironmentSchema = z.object({
   MAX_IMAGE_SIZE_MB: z.coerce.number().positive().max(20).default(5),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().max(1000).default(5),
+  DAILY_ANALYSIS_LIMIT: z.coerce.number().int().positive().max(100_000).default(10),
+  DAILY_ANALYSIS_STATE_FILE: z.string().trim().min(1).default('./data/daily-usage.json'),
   OPENAI_TIMEOUT_MS: z.coerce.number().int().positive().max(120_000).default(30_000)
 });
 

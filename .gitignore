@@ -37,6 +37,7 @@ yarn-error.log
 server/.env
 server/.env.*
 !server/.env.example
+server/data/
 /libpeerconnection.log
 testem.log
 /typings
