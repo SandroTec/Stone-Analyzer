@@ -44,9 +44,13 @@ export class StoneAnalysisService {
 
   async analyzeExtended(base: StoneAnalysis, fields: NonNullable<StoneAnalysis['observations']>, images: File[]): Promise<StoneAnalysis> {
     if (images.length > 4) throw new Error('Es sind höchstens vier zusätzliche Bilder erlaubt.');
+    const originalImage = await this.repository.getImage(base.id);
+    if (!originalImage) throw new Error('Das Originalbild dieser Analyse ist nicht mehr verfügbar. Ohne dieses Bild kann die erweiterte Analyse nicht gestartet werden.');
     let report: AnalysisReport;
     if (environment.analysisMode === 'live') {
       const form = new FormData();
+      const originalExtension = originalImage.type === 'image/png' ? 'png' : originalImage.type === 'image/webp' ? 'webp' : 'jpg';
+      form.append('image', originalImage, `original.${originalExtension}`);
       form.append('location', fields.location);
       form.append('color', fields.color);
       form.append('size', fields.approximateSize);
@@ -65,10 +69,10 @@ export class StoneAnalysisService {
       await new Promise((resolve) => setTimeout(resolve, 900));
       report = { ...this.demos[0], summary: `Demo-Ergebnis einer erweiterten Analyse zu ${base.identification.name}. Es wurden keine Bilder durch eine KI ausgewertet.` };
     }
-    const extended: StoneAnalysis = { ...report, source: environment.analysisMode === 'live' ? 'ai' : 'demo', analysisLevel: 'extended', parentAnalysisId: base.id, observations: fields, id: crypto.randomUUID(), createdAt: new Date().toISOString(), schemaVersion: 1 };
-    await this.repository.save({ ...base, extendedAnalysisId: extended.id });
-    await this.repository.save(extended, images);
-    return extended;
+    const { parentAnalysisId: _parentAnalysisId, extendedAnalysisId: _extendedAnalysisId, ...baseFields } = base;
+    const updated: StoneAnalysis = { ...baseFields, ...report, source: environment.analysisMode === 'live' ? 'ai' : 'demo', analysisLevel: 'extended', observations: fields, id: base.id, createdAt: base.createdAt, schemaVersion: 1 };
+    await this.repository.save(updated, [originalImage, ...images]);
+    return updated;
   }
 
   private reportOnly(analysis: StoneAnalysis): AnalysisReport {

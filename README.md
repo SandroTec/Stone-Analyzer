@@ -104,12 +104,12 @@ Der API-Key wird weder in Angular-Konfigurationen noch an den Browser übertrage
 
 - `GET /api/health` → `{ "status": "ok" }`
 - `POST /api/analyze` → `multipart/form-data` mit `image` und optional `location`, `color`, `size`, `notes`
-- `POST /api/analyze/extended` → `multipart/form-data` mit erforderlichen `location`, `color`, `size`, `notes`, dem validierten `previousReport` sowie null bis vier `images`
+- `POST /api/analyze/extended` → `multipart/form-data` mit `image` (Originalfoto), erforderlichen `location`, `color`, `size`, `notes`, dem validierten `previousReport` sowie null bis vier zusätzlichen `images`
 - Erfolgsantwort: fachlicher Analysebericht mit `identification` (einschließlich `reasoning`), `summary`, `visibleFeatures`, `geologicalContext`, `alternatives`, `recommendedTests` und `limitations`
 
 Das Backend prüft Bildsignatur und MIME-Typ, Feldlängen und strukturierte OpenAI-Ausgabe. Es ergänzt keine UUID oder Zeitstempel und speichert keine Ergebnisse. Angular versieht den Bericht nach Erfolg mit ID, Zeitstempel und Quelle und speichert Bericht und Originalbild lokal in IndexedDB. Bilder werden nicht mit dem Analysebericht an OpenAI zurückgegeben. Die lokalen Daten werden nicht zwischen Geräten synchronisiert. Der In-Process-Rate-Limit-Zähler gilt pro Prozess; öffentliches Hosting mit mehreren Instanzen benötigt später einen zentralen Store. CORS lässt nur `FRONTEND_ORIGIN` zu.
 
-Die erweiterte Analyse startet vom Ergebnisbericht, übernimmt gespeicherte Beobachtungen als vorausgefüllte Pflichtfelder und akzeptiert bis zu vier optionale Zusatzbilder. Der Folgebericht wird separat gespeichert und mit dem Ausgangsbericht verknüpft; Zusatzbilder bleiben lokal beim Folgeeintrag. Für diesen Ablauf stellt das Backend den separaten Endpunkt `/api/analyze/extended` bereit und sendet den vorherigen fachlichen Bericht, die Pflichtangaben und gewählte Zusatzbilder an das KI-Modell. Die Verarbeitung kann länger dauern und zusätzliche API-Kosten verursachen.
+Die erweiterte Analyse startet vom Ergebnisbericht, übernimmt gespeicherte Beobachtungen als vorausgefüllte Pflichtfelder und akzeptiert bis zu vier optionale Zusatzbilder. Das Originalfoto wird automatisch erneut mitgesendet. Nach erfolgreicher Analyse überschreibt das neue Ergebnis den bestehenden Bericht unter derselben ID; Zeitstempel und History-Eintrag bleiben erhalten, und die Bildliste wird atomar aktualisiert. Für diesen Ablauf stellt das Backend den separaten Endpunkt `/api/analyze/extended` bereit und sendet den vorherigen fachlichen Bericht, das Originalfoto, die Pflichtangaben und gewählte Zusatzbilder an das KI-Modell. Bereits gespeicherte Basis-/Erweiterungs-Paare werden beim nächsten Datenbankzugriff zusammengeführt. Die Verarbeitung kann länger dauern und zusätzliche API-Kosten verursachen.
 
 ### Backend-Entwicklung und Tests
 

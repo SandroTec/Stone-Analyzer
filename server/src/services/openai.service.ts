@@ -60,7 +60,7 @@ export class OpenAIService implements StoneAnalyzer {
   async analyzeExtended(images: { buffer: Buffer; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' }[], fields: ExtendedAnalysisFields, previous: StoneAnalysisReport): Promise<StoneAnalysisReport> {
     const observations = `Fundort: ${fields.location}\nFarbe: ${fields.color}\nGröße: ${fields.size}\nWeitere Beobachtungen: ${fields.notes}`;
     const content: Array<{ type: 'input_text'; text: string } | { type: 'input_image'; image_url: string; detail: 'high' }> = [
-      { type: 'input_text', text: `Erstelle eine erweiterte Analyse auf Grundlage der bisherigen Analyse und der ergänzenden Angaben. Die Angaben sind unbestätigt.\n\nBisheriger Analysebericht:\n${JSON.stringify(previous)}\n\nPflichtangaben:\n${observations}\n\nZusätzliche Fotos (falls vorhanden) folgen.` }
+      { type: 'input_text', text: `Erstelle eine erweiterte Analyse auf Grundlage der bisherigen Analyse und der ergänzenden Angaben. Die Angaben sind unbestätigt. Das erste angehängte Bild ist das Originalfoto des Fundstücks; alle folgenden Bilder sind zusätzliche Ansichten desselben Fundstücks.\n\nBisheriger Analysebericht:\n${JSON.stringify(previous)}\n\nPflichtangaben:\n${observations}\n\nBilder folgen.` }
     ];
     for (const image of images) content.push({ type: 'input_image', image_url: `data:${image.mimeType};base64,${image.buffer.toString('base64')}`, detail: 'high' });
     let output: string | undefined;

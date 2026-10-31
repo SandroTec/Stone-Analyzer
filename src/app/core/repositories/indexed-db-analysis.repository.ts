@@ -3,7 +3,7 @@ import { AnalysisRepository } from './analysis.repository';
 import { StoneAnalysis } from '../../shared/models/stone-analysis.model';
 
 interface StoredLegacyAnalyses { schemaVersion: 1; analyses: StoneAnalysis[]; }
-interface StoredImage { id: string; analysisId: string; index: number; data: ArrayBuffer; mimeType: string; }
+interface StoredImage { id: string; analysisId?: string; index?: number; data: ArrayBuffer; mimeType: string; }
 
 function isAnalysis(value: unknown): value is StoneAnalysis {
   if (typeof value !== 'object' || value === null) return false;
@@ -49,13 +49,20 @@ export class IndexedDbAnalysisRepository extends AnalysisRepository {
 
   async save(analysis: StoneAnalysis, image?: Blob | Blob[]): Promise<void> {
     await this.ensureLegacyDataMigrated();
-    const images = image ? (Array.isArray(image) ? image : [image]) : [];
-    const imageData = await Promise.all(images.map(async (blob) => ({ blob, data: await blob.arrayBuffer() })));
+    const images = image === undefined ? undefined : (Array.isArray(image) ? image : [image]);
+    const imageData = images ? await Promise.all(images.map(async (blob) => ({ blob, data: await blob.arrayBuffer() }))) : undefined;
     const database = await this.openDatabase();
     const transaction = database.transaction(['analyses', 'images'], 'readwrite');
     const completed = transactionDone(transaction);
     transaction.objectStore('analyses').put(analysis);
-    imageData.forEach(({ blob, data }, index) => transaction.objectStore('images').put({ id: `${analysis.id}:${index}`, analysisId: analysis.id, index, data, mimeType: blob.type } satisfies StoredImage));
+    if (imageData) {
+      const imageStore = transaction.objectStore('images');
+      const existingRequest = imageStore.getAll();
+      existingRequest.onsuccess = () => {
+        (existingRequest.result as StoredImage[]).filter((row) => row.analysisId === analysis.id || row.id === analysis.id).forEach((row) => imageStore.delete(row.id));
+        imageData.forEach(({ blob, data }, index) => imageStore.put({ id: `${analysis.id}:${index}`, analysisId: analysis.id, index, data, mimeType: blob.type } satisfies StoredImage));
+      };
+    }
     await completed;
   }
 
@@ -91,7 +98,7 @@ export class IndexedDbAnalysisRepository extends AnalysisRepository {
     const store = transaction.objectStore('images');
     const rows = await requestResult(store.getAll()) as StoredImage[];
     await completed;
-    return rows.filter((image) => image.analysisId === id || image.id === id).sort((a, b) => a.index - b.index).map((image) => new Blob([image.data], { type: image.mimeType }));
+    return rows.filter((image) => image.analysisId === id || image.id === id).sort((a, b) => (a.index ?? 0) - (b.index ?? 0)).map((image) => new Blob([image.data], { type: image.mimeType }));
   }
 
   async delete(id: string): Promise<void> {
@@ -135,22 +142,68 @@ export class IndexedDbAnalysisRepository extends AnalysisRepository {
 
   private async migrateLegacyData(): Promise<void> {
     const raw = localStorage.getItem(this.legacyKey);
-    if (!raw) return;
-    let entries: StoneAnalysis[];
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      if (typeof parsed !== 'object' || parsed === null || !('schemaVersion' in parsed) || !('analyses' in parsed)) return;
-      const legacy = parsed as StoredLegacyAnalyses;
-      if (legacy.schemaVersion !== 1 || !Array.isArray(legacy.analyses) || !legacy.analyses.every(isAnalysis)) return;
-      entries = legacy.analyses;
-    } catch { return; }
+    if (raw) {
+      let entries: StoneAnalysis[] | undefined;
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        if (typeof parsed === 'object' && parsed !== null && 'schemaVersion' in parsed && 'analyses' in parsed) {
+          const legacy = parsed as StoredLegacyAnalyses;
+          if (legacy.schemaVersion === 1 && Array.isArray(legacy.analyses) && legacy.analyses.every(isAnalysis)) entries = legacy.analyses;
+        }
+      } catch { /* Keep invalid legacy data untouched for recovery. */ }
+      if (entries) {
+        const database = await this.openDatabase();
+        const transaction = database.transaction('analyses', 'readwrite');
+        const completed = transactionDone(transaction);
+        const store = transaction.objectStore('analyses');
+        for (const entry of entries) store.put(entry);
+        await completed;
+        localStorage.removeItem(this.legacyKey);
+      }
+    }
+    await this.mergeLegacyExtendedEntries();
+  }
 
+  private async mergeLegacyExtendedEntries(): Promise<void> {
     const database = await this.openDatabase();
-    const transaction = database.transaction('analyses', 'readwrite');
+    const transaction = database.transaction(['analyses', 'images'], 'readwrite');
     const completed = transactionDone(transaction);
-    const store = transaction.objectStore('analyses');
-    for (const entry of entries) store.put(entry);
+    const analysesStore = transaction.objectStore('analyses');
+    const imagesStore = transaction.objectStore('images');
+    let analyses: StoneAnalysis[] | undefined;
+    let images: StoredImage[] | undefined;
+    const mergeWhenReady = () => {
+      if (!analyses || !images) return;
+      const byId = new Map(analyses.map((entry) => [entry.id, entry]));
+      const childrenByParent = new Map<string, StoneAnalysis[]>();
+      for (const entry of analyses) {
+        if (!entry.parentAnalysisId || !byId.has(entry.parentAnalysisId)) continue;
+        const children = childrenByParent.get(entry.parentAnalysisId) ?? [];
+        children.push(entry);
+        childrenByParent.set(entry.parentAnalysisId, children);
+      }
+      for (const [parentId, children] of childrenByParent) {
+        const parent = byId.get(parentId)!;
+        children.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+        const latest = children.at(-1)!;
+        const { parentAnalysisId: _parentAnalysisId, extendedAnalysisId: _extendedAnalysisId, ...report } = latest;
+        const { extendedAnalysisId: _oldExtendedAnalysisId, ...parentData } = parent;
+        analysesStore.put({ ...parentData, ...report, id: parent.id, createdAt: parent.createdAt, schemaVersion: 1, analysisLevel: 'extended', observations: latest.observations ?? parent.observations } satisfies StoneAnalysis);
+        const relatedIds = new Set([parentId, ...children.map((child) => child.id)]);
+        const relatedImages = images.filter((image) => relatedIds.has(image.analysisId ?? image.id)).sort((a, b) => {
+          const aOrder = (a.analysisId ?? a.id) === parentId ? 0 : 1;
+          const bOrder = (b.analysisId ?? b.id) === parentId ? 0 : 1;
+          return aOrder - bOrder || (a.index ?? 0) - (b.index ?? 0);
+        });
+        images.filter((image) => relatedIds.has(image.analysisId ?? image.id)).forEach((image) => imagesStore.delete(image.id));
+        relatedImages.forEach((image, index) => imagesStore.put({ ...image, id: `${parentId}:${index}`, analysisId: parentId, index } satisfies StoredImage));
+        children.forEach((child) => analysesStore.delete(child.id));
+      }
+    };
+    const analysesRequest = analysesStore.getAll();
+    const imagesRequest = imagesStore.getAll();
+    analysesRequest.onsuccess = () => { analyses = analysesRequest.result as StoneAnalysis[]; mergeWhenReady(); };
+    imagesRequest.onsuccess = () => { images = imagesRequest.result as StoredImage[]; mergeWhenReady(); };
     await completed;
-    localStorage.removeItem(this.legacyKey);
   }
 }

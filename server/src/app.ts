@@ -34,9 +34,9 @@ export function createApp(config: AppConfig, analyzer: StoneAnalyzer) {
   });
   const extendedUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: Math.floor(config.MAX_IMAGE_SIZE_MB * 1024 * 1024), files: 4, fields: 5, parts: 9 },
+    limits: { fileSize: Math.floor(config.MAX_IMAGE_SIZE_MB * 1024 * 1024), files: 5, fields: 5, parts: 10 },
     fileFilter(_req, file, callback) {
-      if (file.fieldname !== 'images') callback(new AppError(400, 'Zusatzbilder müssen im Feld "images" übertragen werden.', 'invalid_upload'));
+      if (file.fieldname !== 'image' && file.fieldname !== 'images') callback(new AppError(400, 'Das Originalbild muss im Feld "image", Zusatzbilder im Feld "images" übertragen werden.', 'invalid_upload'));
       else if (!MIME_TYPES.has(file.mimetype)) callback(new AppError(415, 'Nur JPEG-, PNG- und WebP-Bilder werden unterstützt.', 'unsupported_image_type'));
       else callback(null, true);
     }
@@ -57,9 +57,12 @@ export function createApp(config: AppConfig, analyzer: StoneAnalyzer) {
     res.status(200).json(report);
   });
 
-  app.post('/api/analyze/extended', createRateLimiter(config.RATE_LIMIT_WINDOW_MS, config.RATE_LIMIT_MAX_REQUESTS), extendedUpload.array('images', 4), async (req, res) => {
+  app.post('/api/analyze/extended', createRateLimiter(config.RATE_LIMIT_WINDOW_MS, config.RATE_LIMIT_MAX_REQUESTS), extendedUpload.fields([{ name: 'image', maxCount: 1 }, { name: 'images', maxCount: 4 }]), async (req, res) => {
     if (config.ANALYSIS_MODE !== 'live') throw new AppError(503, 'Das Backend ist im Mock-Modus. Aktiviere Live-Modus bewusst in server/.env, um kostenpflichtige Anfragen zu erlauben.', 'live_mode_disabled');
-    const files = (req.files ?? []) as Express.Multer.File[];
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+    const original = files?.['image']?.[0];
+    if (!original) throw new AppError(400, 'Das ursprüngliche Bild im Feld "image" ist erforderlich.', 'image_required');
+    const extras = files?.['images'] ?? [];
     const fields = ExtendedAnalysisFieldsSchema.safeParse({ location: req.body.location, color: req.body.color, size: req.body.size, notes: req.body.notes });
     if (!fields.success) throw new AppError(400, 'Alle Beobachtungsfelder müssen ausgefüllt sein und innerhalb der erlaubten Länge liegen.', 'invalid_fields');
     if (typeof req.body.previousReport !== 'string') throw new AppError(400, 'Der vorherige Analysebericht fehlt.', 'previous_report_required');
@@ -69,18 +72,21 @@ export function createApp(config: AppConfig, analyzer: StoneAnalyzer) {
     const previous = StoneAnalysisReportSchema.safeParse(previousValue);
     if (!previous.success) throw new AppError(400, 'Der vorherige Analysebericht hat ein ungültiges Format.', 'invalid_previous_report');
     const images: { buffer: Buffer; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' }[] = [];
-    for (const file of files) {
+    for (const file of [original, ...extras]) {
       const detected = await fileTypeFromBuffer(file.buffer);
-      if (!detected || !MIME_TYPES.has(detected.mime) || detected.mime !== file.mimetype) throw new AppError(415, 'Mindestens eine Zusatzdatei ist kein gültiges JPEG-, PNG- oder WebP-Bild.', 'invalid_image_signature');
+      if (!detected || !MIME_TYPES.has(detected.mime) || detected.mime !== file.mimetype) throw new AppError(415, 'Mindestens eine Datei ist kein gültiges JPEG-, PNG- oder WebP-Bild.', 'invalid_image_signature');
       images.push({ buffer: file.buffer, mimeType: detected.mime as 'image/jpeg' | 'image/png' | 'image/webp' });
     }
     res.status(200).json(await analyzer.analyzeExtended(images, fields.data, previous.data));
   });
 
-  const errors: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
+  const errors: ErrorRequestHandler = (error: unknown, req, res, _next) => {
     if (error instanceof multer.MulterError) {
       if (error.code === 'LIMIT_FILE_SIZE') { res.status(413).json({ error: { code: 'image_too_large', message: `Jedes Bild darf höchstens ${config.MAX_IMAGE_SIZE_MB} MB groß sein.` } }); return; }
-      res.status(400).json({ error: { code: 'invalid_upload', message: 'Der Upload muss genau ein Bild im Feld "image" enthalten.' } }); return;
+      const message = req.path === '/api/analyze/extended'
+        ? 'Die erweiterte Analyse benötigt das Originalbild und erlaubt bis zu vier zusätzliche Bilder.'
+        : 'Der Upload muss genau ein Bild im Feld "image" enthalten.';
+      res.status(400).json({ error: { code: 'invalid_upload', message } }); return;
     }
     if (error instanceof AppError) { res.status(error.statusCode).json({ error: { code: error.code, message: error.message } }); return; }
     // Avoid logging request bodies, uploaded bytes, user notes, or provider error contents.
